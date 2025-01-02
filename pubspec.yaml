@@ -34,13 +34,10 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  flutter_svg: ^2.0.10+1
-  form_field_validator: ^1.1.0
-  cached_network_image: ^3.2.0
-  flutter_rating_bar: ^4.0.1
-  flutter_widget_from_html_core: ^0.15.1
+  font_awesome_flutter: ^10.8.0
   animations: ^2.0.11
-  url_launcher: ^6.3.0
+  flutter_svg: ^2.0.5
+  spider: ^4.2.2
 
 dev_dependencies:
   flutter_test:
@@ -62,28 +59,27 @@ flutter:
 
   assets:
     - assets/images/
-    - assets/icons/
-    - assets/Illustration/
-    - assets/flags/
-    - assets/logo/
-    - assets/screens/
+    - assets/design_course/
+    - assets/fitness_app/
+    - assets/hotel/
+    - assets/introduction_animation/
+    - assets/vectors/
+
 
   fonts:
-    - family: Plus Jakarta
+    - family: WorkSans
       fonts:
-        - asset: assets/fonts/plus_jakarta/PlusJakartaDisplay-Regular.otf
-        - asset: assets/fonts/plus_jakarta/PlusJakartaDisplay-Medium.otf
+        - asset: assets/fonts/WorkSans-Regular.ttf
+        - asset: assets/fonts/WorkSans-Medium.ttf
           weight: 500
-        - asset: assets/fonts/plus_jakarta/PlusJakartaDisplay-Bold.otf
+        - asset: assets/fonts/WorkSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/WorkSans-Bold.ttf
           weight: 700
-    - family: Grandis Extended
+    - family: Roboto
       fonts:
-        - asset: assets/fonts/grandis_extended/GrandisExtended-Regular.ttf
-        - asset: assets/fonts/grandis_extended/GrandisExtended-Thin.ttf
-          weight: 300
-        - asset: assets/fonts/grandis_extended/GrandisExtended-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/grandis_extended/GrandisExtended-Bold.ttf
-          weight: 700
-        - asset: assets/fonts/grandis_extended/GrandisExtended-Black.ttf
-          weight: 900
+        - asset: assets/fonts/Roboto-Bold.ttf
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Medium.ttf
+          weight: 400
+
