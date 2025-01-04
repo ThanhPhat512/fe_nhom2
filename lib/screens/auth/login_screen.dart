@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../utils/auth.dart';
+import '../home_screen.dart';
 import 'register_screen.dart';
 
 class loginScreen extends StatefulWidget {
@@ -10,31 +14,93 @@ class loginScreen extends StatefulWidget {
 }
 
 class _loginScreenState extends State<loginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final ValueNotifier<bool> passwordNotifier = ValueNotifier(true);
-  final ValueNotifier<bool> fieldValidNotifier = ValueNotifier(false);
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
+  bool _obscurePassword = true;
 
-  late final TextEditingController emailController;
-  late final TextEditingController passwordController;
 
   @override
   void initState() {
     super.initState();
-    emailController = TextEditingController()..addListener(_updateFieldValidity);
-    passwordController = TextEditingController()..addListener(_updateFieldValidity);
+    _checkToken(); // Kiểm tra token khi mở màn hình
   }
 
-  @override
-  void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
-    super.dispose();
+  Future<void> _checkToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+
+    if (token != null) {
+      // Kiểm tra token còn hiệu lực hay không
+      if (!JwtDecoder.isExpired(token)) {
+        // Nếu token không hết hạn, lấy role từ token và chuyển hướng
+        Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
+        String role = decodedToken['role'] ?? 'User'; // Lấy role từ token
+
+        if (role == 'User') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => homeScreen()),
+          );
+        }
+      } else {
+        // Token đã hết hạn, xóa token và yêu cầu đăng nhập lại
+        prefs.remove('jwt_token');
+        prefs.remove('userId');
+        prefs.remove('role');
+      }
+    }
   }
 
-  void _updateFieldValidity() {
-    final email = emailController.text;
-    final password = passwordController.text;
-    fieldValidNotifier.value = email.isNotEmpty && password.isNotEmpty;
+  Future<void> _handleLogin() async {
+    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng nhập đầy đủ thông tin'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    // Gọi Auth.login để xử lý đăng nhập
+    Map<String, dynamic> result = await Auth.login(
+      _usernameController.text,
+      _passwordController.text,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (result['success'] == true) {
+      // Lưu token vào SharedPreferences
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('jwt_token', result['token']); // Lưu token
+      await prefs.setString('userId', result['userId']);  // Lưu userId
+      await prefs.setString('role', result['role']);      // Lưu role
+
+      String role = result['role'] ?? 'User'; // Lấy vai trò người dùng
+
+      // Điều hướng tùy thuộc vào vai trò người dùng
+      if (role == 'User') {
+
+        Navigator.pushReplacement(
+          context,
+          // Nếu không phải admin thì chuyển đến trang MainScreen
+          MaterialPageRoute(builder: (context) => homeScreen()),
+        );
+      }
+    } else {
+      // Hiển thị thông báo lỗi
+      String errorMessage = result['message'] ?? 'Tên đăng nhập hoặc mật khẩu không đúng';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _navigateToRegister() {
@@ -57,181 +123,123 @@ class _loginScreenState extends State<loginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFE2ECEC),
-      body: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          _buildGradientHeader(),
-          Form(
-            key: _formKey,
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildEmailField(),
-                  const SizedBox(height: 16),
-                  _buildPasswordField(),
-                  const SizedBox(height: 16),
-                  _buildForgotPasswordButton(),
-                  const SizedBox(height: 20),
-                  _buildLoginButton(),
-                  const SizedBox(height: 20),
-                  _buildSocialLoginOptions(),
-                  const SizedBox(height: 20),
-                  _buildRegisterOption(),
-                ],
-              ),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              children: [
+                const SizedBox(height: 60),
+                Text(
+                  'facebook',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[700],
+                  ),
+                ),
+                const SizedBox(height: 40),
+                TextField(
+                  controller: _usernameController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    hintText: 'Số điện thoại hoặc email',
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    hintText: 'Mật khẩu',
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[700],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                        : const Text(
+                      'Đăng nhập',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Thêm điều hướng đến màn hình đăng ký
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("Chưa có tài khoản? "),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const registerScreen()),
+                        );
+                      },
+                      child: const Text(
+                        'Đăng ký ngay',
+                        style: TextStyle(color: Colors.blue),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGradientHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 50, horizontal: 20),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF38826C), Color(0xFF38826C)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Chào mừng bạn trở lại!",
-            style: TextStyle(color: Colors.white, fontSize: 20), // Hoặc bất kỳ các thuộc tính khác cần thiết
-          ),
-          SizedBox(height: 6),
-          Text(
-            "Đăng nhập để tiếp tục",
-            style: TextStyle(color: Colors.white, fontSize: 16),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmailField() {
-    return TextFormField(
-      controller: emailController,
-      decoration: InputDecoration(
-        labelText: 'Email',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
-      ),
-      keyboardType: TextInputType.emailAddress,
-      textInputAction: TextInputAction.next,
-    );
-  }
-
-  Widget _buildPasswordField() {
-    return ValueListenableBuilder<bool>(
-      valueListenable: passwordNotifier,
-      builder: (context, obscureText, _) {
-        return TextFormField(
-          controller: passwordController,
-          obscureText: obscureText,
-          decoration: InputDecoration(
-            labelText: 'Mật khẩu',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
-            suffixIcon: IconButton(
-              icon: Icon(
-                obscureText ? Icons.visibility_off : Icons.visibility,
-                color: Colors.black,
-              ),
-              onPressed: () {
-                passwordNotifier.value = !obscureText;
-              },
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildForgotPasswordButton() {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: TextButton(
-        onPressed: () {},
-        child: const Text(
-          'Quên mật khẩu?',
-          style: TextStyle(color: Colors.black),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLoginButton() {
-    return ValueListenableBuilder<bool>(
-      valueListenable: fieldValidNotifier,
-      builder: (context, isValid, _) {
-        return ElevatedButton(
-          onPressed: isValid
-              ? () {
-            // Handle login logic
-          }
-              : null,
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: const Text(
-            'Đăng Nhập',
-            style: TextStyle(fontSize: 18),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSocialLoginOptions() {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(child: Divider(color: Colors.grey.shade300)),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 10),
-              child: Text("Hoặc đăng nhập với"),
-            ),
-            Expanded(child: Divider(color: Colors.grey.shade300)),
-          ],
-        ),
-        const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            OutlinedButton.icon(
-              onPressed: () {},
-              icon: SvgPicture.asset('assets/vectors/google.svg', width: 20),
-              label: const Text("Google"),
-            ),
-            OutlinedButton.icon(
-              onPressed: () {},
-              icon: SvgPicture.asset('assets/vectors/facebook.svg', width: 20),
-              label: const Text("Facebook"),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRegisterOption() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text("Chưa có tài khoản?"),
-        TextButton(
-          onPressed: _navigateToRegister,
-          child: const Text("Đăng Ký"),
-        ),
-      ],
     );
   }
 }
