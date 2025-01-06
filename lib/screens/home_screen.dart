@@ -6,6 +6,8 @@ import 'package:fe_nhom2/screens/Product/product_screen.dart';
 import 'package:fe_nhom2/screens/bottom_navigation_view/bottom_bar_view.dart';
 import 'package:flutter/material.dart';
 
+import 'User/userScreen.dart';
+
 
 class homeScreen extends StatefulWidget {
   @override
@@ -114,7 +116,7 @@ class _homeScreenState extends State<homeScreen>
               animationController?.reverse().then<dynamic>((data) {
                 if (!mounted) { return;}
                 setState(() {
-                  tabBody = goodFoodScreen(animationController: animationController);
+                  tabBody = userScreen(animationController: animationController);
                 });
               });
             }

@@ -67,6 +67,7 @@ flutter:
     - assets/hotel/
     - assets/introduction_animation/
     - assets/vectors/
+    - .env
 
 
   fonts:
