@@ -119,30 +119,77 @@ class _registerScreenState extends State<registerScreen> {
 
   Widget _buildGradientHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 50, horizontal: 20),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
+        image: const DecorationImage(
+          image: AssetImage('hinhnenlogin_dangky.jpg'), // Đường dẫn tới ảnh
+          fit: BoxFit.cover,
+        ),
         gradient: LinearGradient(
-          colors: [Color(0xFF38826C), Color(0xFF38826C)],
+          colors: [
+            Color(0xFF38826C).withOpacity(0.8), // Gradient trong suốt
+            Color(0xFF38826C).withOpacity(0.8),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Chào mừng bạn đến với đăng ký!",
-            style: TextStyle(color: Colors.white, fontSize: 20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 50, horizontal: 20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF38826C).withOpacity(0.7), // Overlay gradient
+              Colors.transparent,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          SizedBox(height: 6),
-          Text(
-            "Điền thông tin để tạo tài khoản mới",
-            style: TextStyle(color: Colors.white, fontSize: 16),
-          ),
-        ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildTextWithOutline(
+              "Chào mừng bạn đến với đăng ký!",
+              fontSize: 20,
+            ),
+            SizedBox(height: 6),
+            _buildTextWithOutline(
+              "Điền thông tin để tạo tài khoản mới",
+              fontSize: 16,
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  Widget _buildTextWithOutline(String text, {double fontSize = 16}) {
+    return Stack(
+      children: [
+        // Viền đen
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: fontSize,
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2
+              ..color = Colors.black,
+          ),
+        ),
+        // Chữ trắng
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: fontSize,
+            color: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+
+
 
   Widget _buildEmailField() {
     return TextFormField(
