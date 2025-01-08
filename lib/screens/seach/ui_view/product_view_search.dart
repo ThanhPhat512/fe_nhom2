@@ -1,10 +1,9 @@
 import 'package:fe_nhom2/screens/Product/ui_view/product_detail_view.dart';
 import 'package:flutter/material.dart';
-import '../../../models/food_post.dart';
-import '../../../services/food_service.dart';
+import '../../../services/seach_product_service.dart';
 
-class ProductView extends StatefulWidget {
-  const ProductView({
+class SeachProductView extends StatefulWidget {
+  const SeachProductView({
     Key? key,
     this.mainScreenAnimationController,
     this.mainScreenAnimation,
@@ -14,12 +13,12 @@ class ProductView extends StatefulWidget {
   final Animation<double>? mainScreenAnimation;
 
   @override
-  _ProductViewState createState() => _ProductViewState();
+  _SeachProductViewState createState() => _SeachProductViewState();
 }
 
-class _ProductViewState extends State<ProductView> with TickerProviderStateMixin {
-  late Future<List<Map<String, dynamic>>> areaListDataFuture;
-  AnimationController? animationController;
+class _SeachProductViewState extends State<SeachProductView> with TickerProviderStateMixin {
+  late AnimationController animationController;
+  late Future<List<Map<String, dynamic>>> productDataFuture;
 
   @override
   void initState() {
@@ -28,30 +27,21 @@ class _ProductViewState extends State<ProductView> with TickerProviderStateMixin
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
-
-    // Fetch the data in initState
-    areaListDataFuture = fetchAreaListData();
+    // Fetch product data on initialization
+    productDataFuture = fetchProductData();
   }
 
-  Future<List<Map<String, dynamic>>> fetchAreaListData() async {
+  Future<List<Map<String, dynamic>>> fetchProductData() async {
     try {
-      final List<FoodItem> foodItems = await FoodItemService.fetchData();
-      return foodItems
-          .map((foodItem) => {
-        'fdcId': foodItem.fdcId, // Ensure fdcId is added here as int
-        'imageUrl': foodItem.imageUrl,
-        'description': foodItem.description,
-      })
-          .toList();
+      return await SearchProductService.searchProducts('apple'); // Hardcoded query
     } catch (error) {
-      print('Error fetching area list data: $error');
-      return [];
+      throw Exception('Error fetching data: $error');
     }
   }
 
   @override
   void dispose() {
-    animationController?.dispose();
+    animationController.dispose();
     super.dispose();
   }
 
@@ -66,7 +56,7 @@ class _ProductViewState extends State<ProductView> with TickerProviderStateMixin
             transform: Matrix4.translationValues(
                 0.0, 30 * (1.0 - widget.mainScreenAnimation!.value), 0.0),
             child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: areaListDataFuture,
+              future: productDataFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
