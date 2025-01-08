@@ -6,7 +6,7 @@ import '../config/config_url.dart';
 
 class AuthService {
   // Đường dẫn đến API login
-  String get apiUrl => "${Config_URL.baseUrl}login";
+  String get apiUrl => "${Config_URL.baseUrl}/login";
 
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
@@ -61,13 +61,15 @@ class AuthService {
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('jwt_token', token);
         await prefs.setString('userId', userId);
+        await prefs.setString('username', username);
         await prefs.setString('role', role);
 
         return {
           "success": true,
           "token": token,
           "userId": userId,
-          "role": role,  // Trả về role trong kết quả
+          "userName": username,
+          "role": role,
           "decodedToken": decodedToken,
         };
       } else {
