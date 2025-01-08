@@ -25,4 +25,15 @@ class FoodItem {
       foodCode: json['foodCode'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'fdcId': fdcId,
+      'description': description,
+      'imageUrl': imageUrl,
+      'dataType': dataType,
+      'publicationDate': publicationDate,
+      'foodCode': foodCode,
+    };
+  }
 }

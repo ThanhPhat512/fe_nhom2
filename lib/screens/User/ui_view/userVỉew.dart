@@ -18,7 +18,7 @@ class UserView extends StatefulWidget {
 }
 
 class _UserViewState extends State<UserView> {
-  late Future<user?> futureUser;
+  late Future<User?> futureUser;
 
   @override
   void initState() {
@@ -52,7 +52,7 @@ class _UserViewState extends State<UserView> {
             child: Padding(
               padding:
               const EdgeInsets.only(left: 24, right: 24, top: 16, bottom: 18),
-              child: FutureBuilder<user?>(
+              child: FutureBuilder<User?>(
                 future: futureUser,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -76,7 +76,7 @@ class _UserViewState extends State<UserView> {
     );
   }
 
-  Widget _buildUserInfo(user userData) {
+  Widget _buildUserInfo(User userData) {
     return Container(
       decoration: BoxDecoration(
         color: FitnessAppTheme.white,

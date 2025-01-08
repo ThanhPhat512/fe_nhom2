@@ -12,7 +12,7 @@ class UserService {
     return prefs.getString('jwt_token');
   }
 
-  static Future<user> fetchData() async {
+  static Future<User> fetchData() async {
     final token = await getToken();
     if (token == null) {
       throw Exception('Token is missing. Please log in.');
@@ -33,7 +33,7 @@ class UserService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
-        return user.fromJson(data);
+        return User.fromJson(data);
       } else {
         print('Error: ${response.body}');
         throw Exception(
