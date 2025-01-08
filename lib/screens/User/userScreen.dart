@@ -1,8 +1,12 @@
-import 'package:fe_nhom2/screens/User/ui_view/BodyMeasurementView.dart';
+import 'package:fe_nhom2/screens/User/ui_view/userVỉew.dart';
 import 'package:flutter/material.dart';
 import 'package:fe_nhom2/theme/home_app_theme.dart';
-import 'package:fe_nhom2/screens/home/good_food/water_view.dart';
 import 'package:fe_nhom2/screens/home/ui_view/title_view.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../Product/product_screen.dart';
+import '../home_screen.dart';
+import '../introduction_infomation/introduction_screen.dart';
+import 'account_info_screen.dart';
 
 class userScreen extends StatefulWidget {
   const userScreen({Key? key, this.animationController}) : super(key: key);
@@ -20,6 +24,8 @@ class _userScreenState extends State<userScreen> with TickerProviderStateMixin {
   final ScrollController scrollController = ScrollController();
   double topBarOpacity = 0.0;
 
+  String userName = 'Người Dùng';
+
   @override
   void initState() {
     topBarAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -27,6 +33,8 @@ class _userScreenState extends State<userScreen> with TickerProviderStateMixin {
             parent: widget.animationController!,
             curve: Interval(0, 0.5, curve: Curves.fastOutSlowIn)));
     addAllListData();
+
+    fetchUserName();
 
     scrollController.addListener(() {
       if (scrollController.offset >= 24) {
@@ -54,45 +62,56 @@ class _userScreenState extends State<userScreen> with TickerProviderStateMixin {
   }
 
   void addAllListData() {
-    const int count = 3; // Giảm số lượng widget
+    const int count = 3;
 
     listViews.add(
       TitleView(
         titleTxt: 'Thông tin của bạn',
-        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
+        animationController: widget.animationController,
+        animation: Tween<double>(begin: 0.0, end: 1.0).animate(
+          CurvedAnimation(
             parent: widget.animationController!,
-            curve: Interval((1 / count) * 0, 1.0, curve: Curves.fastOutSlowIn))),
-        animationController: widget.animationController!,
+            curve: const Interval(0, 1.0, curve: Curves.fastOutSlowIn),
+          ),
+        ),
+        onSubTxtTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => homeScreen(),
+            ),
+          );
+        },
       ),
     );
 
     listViews.add(
-      BodyMeasurementView(
+      UserView(
         animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
             parent: widget.animationController!,
             curve: Interval((1 / count) * 1, 1.0, curve: Curves.fastOutSlowIn))),
         animationController: widget.animationController!,
       ),
     );
+  }
 
-    listViews.add(
-      TitleView(
-        titleTxt: 'Nước',
-        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-            parent: widget.animationController!,
-            curve: Interval((1 / count) * 2, 1.0, curve: Curves.fastOutSlowIn))),
-        animationController: widget.animationController!,
-      ),
-    );
+  Future<void> fetchUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userName = prefs.getString('username') ?? 'Người Dùng';
+    });
+  }
 
-    listViews.add(
-      WaterView(
-        mainScreenAnimation: Tween<double>(begin: 0.0, end: 1.0).animate(
-            CurvedAnimation(
-                parent: widget.animationController!,
-                curve: Interval((1 / count) * 3, 1.0, curve: Curves.fastOutSlowIn))),
-        mainScreenAnimationController: widget.animationController!,
-      ),
+  // Hàm xóa token khỏi SharedPreferences khi người dùng đăng xuất
+  Future<void> logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('jwt_token');
+    await prefs.remove('userId');
+
+    // Điều hướng về màn hình login
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const IntroductionAnimationScreen()),
     );
   }
 
@@ -187,21 +206,58 @@ class _userScreenState extends State<userScreen> with TickerProviderStateMixin {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: <Widget>[
                             Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(
-                                  'User Dashboard', // Tiêu đề thay đổi thành User Dashboard
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(
-                                    fontFamily: FitnessAppTheme.fontName,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 22 + 6 - 6 * topBarOpacity,
-                                    letterSpacing: 1.2,
-                                    color: FitnessAppTheme.nearlyBlue,
+                              child: Text(
+                                userName,
+                                textAlign: TextAlign.left,
+                                style: TextStyle(
+                                  fontFamily: FitnessAppTheme.fontName,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 22 + 6 - 6 * topBarOpacity,
+                                  letterSpacing: 1.2,
+                                  color: FitnessAppTheme.nearlyBlue,
+                                ),
+                              ),
+                            ),
+
+                            Expanded(
+                              child: InkWell(
+                                onTap: () async {
+                                  await logout(); // Gọi hàm logout
+                                },
+                                borderRadius: BorderRadius.circular(8.0), // Hiệu ứng bo góc khi nhấn
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0), // Căn chỉnh padding
+                                  decoration: BoxDecoration(
+                                    color: FitnessAppTheme.nearlyBlue.withOpacity(0.1), // Nền nhạt
+                                    borderRadius: BorderRadius.circular(8.0), // Bo góc
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center, // Căn giữa nội dung
+                                    children: [
+                                      const Icon(
+                                        Icons.logout, // Biểu tượng Logout
+                                        color: FitnessAppTheme.nearlyBlue,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8), // Khoảng cách giữa biểu tượng và text
+                                      Text(
+                                        'Đăng Xuất', // Văn bản nút
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontFamily: FitnessAppTheme.fontName,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 18,
+                                          letterSpacing: 0.8,
+                                          color: FitnessAppTheme.nearlyBlue,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
                             ),
+
+
                           ],
                         ),
                       )
