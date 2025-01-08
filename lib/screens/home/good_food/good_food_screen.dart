@@ -1,18 +1,21 @@
-import 'package:fe_nhom2/screens/home/ui_view/body_measurement.dart';
-import 'package:fe_nhom2/screens/home/ui_view/glass_view.dart';
-import 'package:fe_nhom2/screens/home/ui_view/mediterranean_diet_view.dart';
-import 'package:fe_nhom2/screens/home/ui_view/title_view.dart';
-import 'package:fe_nhom2/theme/home_app_theme.dart';
-import 'package:fe_nhom2/screens/home/good_food/meals_list_view.dart';
-import 'package:fe_nhom2/screens/home/good_food/water_view.dart';
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
-import '../ui_view/area_list_view.dart';
+import '../../../config/config_url.dart';
+import '../../../models/post_post.dart';
+import '../../../theme/home_app_theme.dart';
+
+import '../ui_view/PostView.dart';
+import '../ui_view/title_view.dart';
+import 'meals_list_view.dart';
 
 class goodFoodScreen extends StatefulWidget {
   const goodFoodScreen({Key? key, this.animationController}) : super(key: key);
 
   final AnimationController? animationController;
+
   @override
   _goodFoodScreenState createState() => _goodFoodScreenState();
 }
@@ -20,18 +23,19 @@ class goodFoodScreen extends StatefulWidget {
 class _goodFoodScreenState extends State<goodFoodScreen>
     with TickerProviderStateMixin {
   Animation<double>? topBarAnimation;
-
   List<Widget> listViews = <Widget>[];
   final ScrollController scrollController = ScrollController();
   double topBarOpacity = 0.0;
 
   @override
   void initState() {
+    super.initState();
     topBarAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(
-            parent: widget.animationController!,
-            curve: Interval(0, 0.5, curve: Curves.fastOutSlowIn)));
-    addAllListData();
+      CurvedAnimation(
+        parent: widget.animationController!,
+        curve: const Interval(0, 0.5, curve: Curves.fastOutSlowIn),
+      ),
+    );
 
     scrollController.addListener(() {
       if (scrollController.offset >= 24) {
@@ -40,8 +44,7 @@ class _goodFoodScreenState extends State<goodFoodScreen>
             topBarOpacity = 1.0;
           });
         }
-      } else if (scrollController.offset <= 24 &&
-          scrollController.offset >= 0) {
+      } else if (scrollController.offset <= 24 && scrollController.offset >= 0) {
         if (topBarOpacity != scrollController.offset / 24) {
           setState(() {
             topBarOpacity = scrollController.offset / 24;
@@ -55,124 +58,84 @@ class _goodFoodScreenState extends State<goodFoodScreen>
         }
       }
     });
-    super.initState();
+
+    addAllListData();
   }
 
-  void addAllListData() {
-    const int count = 9;
+  Future<List<Post>> fetchPosts() async {
+    final String baseUrl = '${Config_URL.baseUrl}api/Post';
+    final response = await http.get(
+      Uri.parse(baseUrl),
+      headers: {
+        HttpHeaders.contentTypeHeader: 'application/json',
+        HttpHeaders.acceptHeader: 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+      },
+    );
 
-    // listViews.add(
-    //   TitleView(
-    //     titleTxt: 'Chế độ ăn',
-    //     animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-    //         parent: widget.animationController!,
-    //         curve:
-    //             Interval((1 / count) * 0, 1.0, curve: Curves.fastOutSlowIn))),
-    //     animationController: widget.animationController!,
-    //   ),
-    // );
-    // listViews.add(
-    //   MediterranesnDietView(
-    //     animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-    //         parent: widget.animationController!,
-    //         curve:
-    //             Interval((1 / count) * 1, 1.0, curve: Curves.fastOutSlowIn))),
-    //     animationController: widget.animationController!,
-    //   ),
-    // );
+    if (response.statusCode == 200) {
+      List<dynamic> data = json.decode(response.body);
+      return data.map((item) => Post.fromJson(item)).toList();
+    } else {
+      throw Exception('Failed to load posts');
+    }
+  }
+
+  Future<void> addAllListData() async {
+    const int count = 10;
+
+    // Thêm các view khác
     listViews.add(
       TitleView(
         titleTxt: 'Danh Mục Sản Phẩm',
         animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
             parent: widget.animationController!,
-            curve:
-                Interval((1 / count) * 2, 1.0, curve: Curves.fastOutSlowIn))),
+            curve: Interval((1 / count) * 2, 1.0, curve: Curves.fastOutSlowIn))),
         animationController: widget.animationController!,
       ),
     );
+
     listViews.add(
       MealsListView(
         mainScreenAnimation: Tween<double>(begin: 0.0, end: 1.0).animate(
             CurvedAnimation(
                 parent: widget.animationController!,
-                curve: Interval((1 / count) * 3, 1.0,
-                    curve: Curves.fastOutSlowIn))),
+                curve: Interval((1 / count) * 3, 1.0, curve: Curves.fastOutSlowIn))),
         mainScreenAnimationController: widget.animationController,
       ),
     );
 
-    listViews.add(
-      TitleView(
-        titleTxt: 'Sản Phẩm',
-        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-            parent: widget.animationController!,
-            curve:
-            Interval((1 / count) * 4, 1.0, curve: Curves.fastOutSlowIn))),
-        animationController: widget.animationController!,
-      ),
-    );
+    // Tải dữ liệu bài viết từ API
+    try {
+      List<Post> posts = await fetchPosts();
 
-    listViews.add(
-      AreaListView(
-        mainScreenAnimation: Tween<double>(begin: 0.0, end: 1.0).animate(
-            CurvedAnimation(
-                parent: widget.animationController!,
-                curve: Interval((1 / count) * 5, 1.0,
-                    curve: Curves.fastOutSlowIn))),
-        mainScreenAnimationController: widget.animationController!,
-      ),
-    );
+      // Thêm tiêu đề bài viết
+      listViews.add(
+        TitleView(
+          titleTxt: 'Bài viết',
+          animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
+              parent: widget.animationController!,
+              curve: Interval((1 / count) * 9, 1.0, curve: Curves.fastOutSlowIn))),
+          animationController: widget.animationController!,
+        ),
+      );
 
-    listViews.add(
-      TitleView(
-        titleTxt: 'Thông tin của bạn',
-        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-            parent: widget.animationController!,
-            curve:
-                Interval((1 / count) * 4, 1.0, curve: Curves.fastOutSlowIn))),
-        animationController: widget.animationController!,
-      ),
-    );
+      // Thêm danh sách bài viết
+      listViews.add(
+        PostView(
+          posts: posts,
+          animationController: widget.animationController!,
+          animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
+              parent: widget.animationController!,
+              curve: Interval((1 / count) * 10, 1.0, curve: Curves.fastOutSlowIn))),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error fetching posts: $e');
+    }
 
-    listViews.add(
-      BodyMeasurementView(
-        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-            parent: widget.animationController!,
-            curve:
-                Interval((1 / count) * 5, 1.0, curve: Curves.fastOutSlowIn))),
-        animationController: widget.animationController!,
-      ),
-    );
-    listViews.add(
-      TitleView(
-        titleTxt: 'Nước',
-        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-            parent: widget.animationController!,
-            curve:
-                Interval((1 / count) * 6, 1.0, curve: Curves.fastOutSlowIn))),
-        animationController: widget.animationController!,
-      ),
-    );
-
-    listViews.add(
-      WaterView(
-        mainScreenAnimation: Tween<double>(begin: 0.0, end: 1.0).animate(
-            CurvedAnimation(
-                parent: widget.animationController!,
-                curve: Interval((1 / count) * 7, 1.0,
-                    curve: Curves.fastOutSlowIn))),
-        mainScreenAnimationController: widget.animationController!,
-      ),
-    );
-    listViews.add(
-      GlassView(
-          animation: Tween<double>(begin: 0.0, end: 1.0).animate(
-              CurvedAnimation(
-                  parent: widget.animationController!,
-                  curve: Interval((1 / count) * 8, 1.0,
-                      curve: Curves.fastOutSlowIn))),
-          animationController: widget.animationController!),
-    );
+    // Gọi setState để cập nhật giao diện
+    setState(() {});
   }
 
   Future<bool> getData() async {
@@ -245,10 +208,11 @@ class _goodFoodScreenState extends State<goodFoodScreen>
                     ),
                     boxShadow: <BoxShadow>[
                       BoxShadow(
-                          color: FitnessAppTheme.grey
-                              .withOpacity(0.4 * topBarOpacity),
-                          offset: const Offset(1.1, 1.1),
-                          blurRadius: 10.0),
+                        color: FitnessAppTheme.grey
+                            .withOpacity(0.4 * topBarOpacity),
+                        offset: const Offset(1.1, 1.1),
+                        blurRadius: 10.0,
+                      ),
                     ],
                   ),
                   child: Column(
