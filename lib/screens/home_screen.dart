@@ -34,7 +34,7 @@ class _homeScreenState extends State<homeScreen>
 
     animationController = AnimationController(
         duration: const Duration(milliseconds: 600), vsync: this);
-    tabBody = goodFoodScreen(animationController: animationController);
+    tabBody = GoodFoodScreen(animationController: animationController);
     super.initState();
   }
 
@@ -96,13 +96,13 @@ class _homeScreenState extends State<homeScreen>
                 if (!mounted) {return; }
                 setState(() {
                 });
-                tabBody = goodFoodScreen(animationController: animationController);
+                tabBody = GoodFoodScreen(animationController: animationController);
               });
             } else if (index == 1 ) {
               animationController?.reverse().then<dynamic>((data) {
                 if (!mounted) { return;}
                 setState(() {
-                  tabBody = goodFoodScreen(animationController: animationController);
+                  tabBody = GoodFoodScreen(animationController: animationController);
                 });
               });
             } else if (index == 2 ) {
@@ -116,7 +116,7 @@ class _homeScreenState extends State<homeScreen>
               animationController?.reverse().then<dynamic>((data) {
                 if (!mounted) { return;}
                 setState(() {
-                  tabBody = userScreen(animationController: animationController);
+                  tabBody = UserScreen(animationController: animationController);
                 });
               });
             }

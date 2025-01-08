@@ -1,274 +1,388 @@
-import 'package:fe_nhom2/screens/User/ui_view/userVỉew.dart';
+import 'dart:convert';
+import 'package:fe_nhom2/models/user_post.dart';
+import 'package:fe_nhom2/services/user_service.dart';
 import 'package:flutter/material.dart';
 import 'package:fe_nhom2/theme/home_app_theme.dart';
-import 'package:fe_nhom2/screens/home/ui_view/title_view.dart';
+import 'package:fe_nhom2/screens/home_screen.dart';
+import 'package:fe_nhom2/screens/introduction_infomation/introduction_screen.dart';
+import 'package:fe_nhom2/config/config_url.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../Product/product_screen.dart';
-import '../home_screen.dart';
-import '../introduction_infomation/introduction_screen.dart';
-import 'account_info_screen.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 
-class userScreen extends StatefulWidget {
-  const userScreen({Key? key, this.animationController}) : super(key: key);
+import '../../models/post_post.dart';
+
+class UserScreen extends StatefulWidget {
+  const UserScreen({Key? key, this.animationController}) : super(key: key);
 
   final AnimationController? animationController;
 
   @override
-  _userScreenState createState() => _userScreenState();
+  _UserScreenState createState() => _UserScreenState();
 }
 
-class _userScreenState extends State<userScreen> with TickerProviderStateMixin {
-  Animation<double>? topBarAnimation;
-
-  List<Widget> listViews = <Widget>[];
-  final ScrollController scrollController = ScrollController();
-  double topBarOpacity = 0.0;
-
-  String userName = 'Người Dùng';
+class _UserScreenState extends State<UserScreen> {
+  late Future<User?> futureUser;
+  List<Post> posts = [];
+  late Future<Map<String, dynamic>> userProfile;
 
   @override
   void initState() {
-    topBarAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(
-            parent: widget.animationController!,
-            curve: Interval(0, 0.5, curve: Curves.fastOutSlowIn)));
-    addAllListData();
-
-    fetchUserName();
-
-    scrollController.addListener(() {
-      if (scrollController.offset >= 24) {
-        if (topBarOpacity != 1.0) {
-          setState(() {
-            topBarOpacity = 1.0;
-          });
-        }
-      } else if (scrollController.offset <= 24 &&
-          scrollController.offset >= 0) {
-        if (topBarOpacity != scrollController.offset / 24) {
-          setState(() {
-            topBarOpacity = scrollController.offset / 24;
-          });
-        }
-      } else if (scrollController.offset <= 0) {
-        if (topBarOpacity != 0.0) {
-          setState(() {
-            topBarOpacity = 0.0;
-          });
-        }
-      }
-    });
     super.initState();
+    futureUser = UserService.fetchData();
+    userProfile = fetchUserProfile();
+    fetchUserPosts();
   }
 
-  void addAllListData() {
-    const int count = 3;
+  Future<Map<String, dynamic>> fetchUserProfile() async {
+    String? token = await getJwtToken();
+    if (token == null) return {};
 
-    listViews.add(
-      TitleView(
-        titleTxt: 'Thông tin của bạn',
-        animationController: widget.animationController,
-        animation: Tween<double>(begin: 0.0, end: 1.0).animate(
-          CurvedAnimation(
-            parent: widget.animationController!,
-            curve: const Interval(0, 1.0, curve: Curves.fastOutSlowIn),
-          ),
-        ),
-        onSubTxtTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => homeScreen(),
-            ),
-          );
-        },
-      ),
+    final String baseUrl = '${Config_URL.baseUrl}';
+    final String url = '$baseUrl/api/User/profile';
+
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+        'ngrok-skip-browser-warning': 'true',
+      },
     );
 
-    listViews.add(
-      UserView(
-        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-            parent: widget.animationController!,
-            curve: Interval((1 / count) * 1, 1.0, curve: Curves.fastOutSlowIn))),
-        animationController: widget.animationController!,
-      ),
-    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load user profile');
+    }
   }
 
-  Future<void> fetchUserName() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      userName = prefs.getString('username') ?? 'Người Dùng';
-    });
+  Future<void> fetchUserPosts() async {
+    String? token = await getJwtToken();
+    String? userId = await getUserIdFromToken();
+    if (userId != null && token != null) {
+      try {
+        List<Post> userPosts = await fetchUserPostsData(userId, token);
+        setState(() {
+          posts = userPosts;
+        });
+      } catch (e) {
+        print('Error fetching posts: $e');
+      }
+    }
   }
 
-  // Hàm xóa token khỏi SharedPreferences khi người dùng đăng xuất
-  Future<void> logout() async {
+  // Fetch JWT token from SharedPreferences
+  Future<String?> getJwtToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('jwt_token');
-    await prefs.remove('userId');
-
-    // Điều hướng về màn hình login
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const IntroductionAnimationScreen()),
-    );
+    return prefs.getString('jwt_token');
   }
 
-  Future<bool> getData() async {
-    await Future<dynamic>.delayed(const Duration(milliseconds: 50));
-    return true;
+  // Get the user ID from the JWT token
+  Future<String> getUserIdFromToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token');
+    if (token == null) return '';
+    final decodedToken = JwtDecoder.decode(token);
+    return decodedToken['userId'] ?? '';
   }
+
+// Fetch posts for the user
+Future<List<Post>> fetchUserPostsData(String userId, String token) async {
+  final String baseUrl = '${Config_URL.baseUrl}';
+  final String url = '$baseUrl/api/post/user';
+
+  final response = await http.get(
+    Uri.parse(url),
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+      'ngrok-skip-browser-warning': 'true',
+    },
+  );
+
+  if (response.statusCode == 200) {
+    List<dynamic> data = json.decode(response.body);
+    return data.map((json) => Post.fromJson(json)).toList();
+  } else {
+    throw Exception('Failed to load posts');
+  }
+}
+
+Future<void> logout() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  await prefs.remove('jwt_token');
+  await prefs.remove('userId');
+
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const IntroductionAnimationScreen(),
+    ),
+  );
+}
+
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text('User Screen'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.logout),
+          onPressed: logout,
+        ),
+      ],
+    ),
+    body: SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 80.0), // Add padding to the bottom
+      child: Column(
+        children: [
+          // User Info View
+          UserView(animationController: widget.animationController, userProfile: userProfile),
+
+          // User Posts View
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: posts.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+              shrinkWrap: true,
+              itemCount: posts.length,
+              itemBuilder: (context, index) {
+                final post = posts[index];
+                String formattedDate =
+                DateFormat('yyyy-MM-dd HH:mm').format(post.dateCreate);
+
+                return Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundImage: post.user.avatar != null
+                                  ? NetworkImage(post.user.avatar!)
+                                  : const AssetImage('assets/default_profile.png')
+                              as ImageProvider,
+                              radius: 25,
+                            ),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  post.user.userName!,
+                                  style: const TextStyle(
+                                      fontSize: 16, fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  formattedDate,
+                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          post.description ?? 'No description',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(height: 16),
+                        post.image != null
+                            ? Padding(
+                          padding: const EdgeInsets.only(top: 16.0),
+                          child: Center(  // Center the image
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                post.image!,
+                                fit: BoxFit.cover,  // BoxFit.cover will ensure the image is nicely scaled and covers the area
+                                width: 350,  // Increased width
+                                height: 250,  // Increased height
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Center(
+                                    child: CircularProgressIndicator(
+                                      value: loadingProgress.expectedTotalBytes != null
+                                          ? loadingProgress.cumulativeBytesLoaded /
+                                          (loadingProgress.expectedTotalBytes ?? 1)
+                                          : null,
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) => const Center(
+                                  child: Text('Image failed to load'),
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                            : const SizedBox.shrink(),
+
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+}
+
+class UserView extends StatelessWidget {
+  final AnimationController? animationController;
+  final Future<Map<String, dynamic>> userProfile;
+  const UserView({Key? key, this.animationController, required this.userProfile}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: FitnessAppTheme.background,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Stack(
-          children: <Widget>[
-            getMainListViewUI(),
-            getAppBarUI(),
-            SizedBox(
-              height: MediaQuery.of(context).padding.bottom,
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget getMainListViewUI() {
-    return FutureBuilder<bool>(
-      future: getData(),
-      builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-        if (!snapshot.hasData) {
-          return const SizedBox();
-        } else {
-          return ListView.builder(
-            controller: scrollController,
-            padding: EdgeInsets.only(
-              top: AppBar().preferredSize.height +
-                  MediaQuery.of(context).padding.top +
-                  24,
-              bottom: 62 + MediaQuery.of(context).padding.bottom,
+    return AnimatedBuilder(
+      animation: animationController!,
+      builder: (BuildContext context, Widget? child) {
+        return FadeTransition(
+          opacity: animationController!,
+          child: Transform(
+            transform: Matrix4.translationValues(
+                0.0, 30 * (1.0 - animationController!.value), 0.0),
+            child: Padding(
+              padding: const EdgeInsets.only(left: 24, right: 24, top: 16, bottom: 18),
+              child: FutureBuilder<Map<String, dynamic>>(
+                future: userProfile,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(
+                      child: Text('Error: ${snapshot.error}'),
+                    );
+                  } else if (snapshot.hasData && snapshot.data != null) {
+                    final profileData = snapshot.data!;
+                    return _buildUserInfo(profileData);
+                  } else {
+                    return const Center(child: Text('No user profile data available'));
+                  }
+                },
+              ),
             ),
-            itemCount: listViews.length,
-            scrollDirection: Axis.vertical,
-            itemBuilder: (BuildContext context, int index) {
-              widget.animationController?.forward();
-              return listViews[index];
-            },
-          );
-        }
+          ),
+        );
       },
     );
   }
 
-  Widget getAppBarUI() {
-    return Column(
-      children: <Widget>[
-        AnimatedBuilder(
-          animation: widget.animationController!,
-          builder: (BuildContext context, Widget? child) {
-            return FadeTransition(
-              opacity: topBarAnimation!,
-              child: Transform(
-                transform: Matrix4.translationValues(
-                    0.0, 30 * (1.0 - topBarAnimation!.value), 0.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: FitnessAppTheme.white.withOpacity(topBarOpacity),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(32.0),
-                    ),
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(
-                          color: FitnessAppTheme.grey
-                              .withOpacity(0.4 * topBarOpacity),
-                          offset: const Offset(1.1, 1.1),
-                          blurRadius: 10.0),
-                    ],
-                  ),
-                  child: Column(
-                    children: <Widget>[
-                      SizedBox(
-                        height: MediaQuery.of(context).padding.top,
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(
-                            left: 16,
-                            right: 16,
-                            top: 16 - 8.0 * topBarOpacity,
-                            bottom: 12 - 8.0 * topBarOpacity),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            Expanded(
-                              child: Text(
-                                userName,
-                                textAlign: TextAlign.left,
-                                style: TextStyle(
-                                  fontFamily: FitnessAppTheme.fontName,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 22 + 6 - 6 * topBarOpacity,
-                                  letterSpacing: 1.2,
-                                  color: FitnessAppTheme.nearlyBlue,
-                                ),
-                              ),
-                            ),
-
-                            Expanded(
-                              child: InkWell(
-                                onTap: () async {
-                                  await logout(); // Gọi hàm logout
-                                },
-                                borderRadius: BorderRadius.circular(8.0), // Hiệu ứng bo góc khi nhấn
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0), // Căn chỉnh padding
-                                  decoration: BoxDecoration(
-                                    color: FitnessAppTheme.nearlyBlue.withOpacity(0.1), // Nền nhạt
-                                    borderRadius: BorderRadius.circular(8.0), // Bo góc
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center, // Căn giữa nội dung
-                                    children: [
-                                      const Icon(
-                                        Icons.logout, // Biểu tượng Logout
-                                        color: FitnessAppTheme.nearlyBlue,
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: 8), // Khoảng cách giữa biểu tượng và text
-                                      Text(
-                                        'Đăng Xuất', // Văn bản nút
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontFamily: FitnessAppTheme.fontName,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 18,
-                                          letterSpacing: 0.8,
-                                          color: FitnessAppTheme.nearlyBlue,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-
-
-                          ],
-                        ),
-                      )
-                    ],
+  Widget _buildUserInfo(Map<String, dynamic> profileData) {
+    return profileData.isEmpty
+        ? const Center(child: Text('No user profile data available'))
+  :   Container(
+      decoration: BoxDecoration(
+        color: FitnessAppTheme.white,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(8.0),
+          bottomLeft: Radius.circular(8.0),
+          bottomRight: Radius.circular(8.0),
+          topRight: Radius.circular(68.0),
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+              color: FitnessAppTheme.grey.withOpacity(0.2),
+              offset: const Offset(1.1, 1.1),
+              blurRadius: 10.0),
+        ],
+      ),
+      child: Column(
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.only(top: 16, left: 16, right: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Full Name: ${profileData['fullName'] ?? 'N/A'}',
+                  style: TextStyle(
+                    fontFamily: FitnessAppTheme.fontName,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    color: FitnessAppTheme.darkText,
                   ),
                 ),
-              ),
-            );
-          },
-        )
-      ],
+                const SizedBox(height: 8),
+                Text(
+                  'Username: ${profileData['userName'] ?? 'N/A'}',
+                  style: TextStyle(
+                    fontFamily: FitnessAppTheme.fontName,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    color: FitnessAppTheme.grey.withOpacity(0.8),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Email: ${profileData['email'] ?? 'N/A'}',
+                  style: TextStyle(
+                    fontFamily: FitnessAppTheme.fontName,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    color: FitnessAppTheme.grey.withOpacity(0.8),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Gender: ${profileData['gender'] ?? 'N/A'}',
+                  style: TextStyle(
+                    fontFamily: FitnessAppTheme.fontName,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    color: FitnessAppTheme.grey.withOpacity(0.8),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Activity Level: ${profileData['activityLevel'] ?? 'N/A'}',
+                  style: TextStyle(
+                    fontFamily: FitnessAppTheme.fontName,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    color: FitnessAppTheme.grey.withOpacity(0.8),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Height: ${profileData['height'] ?? 'N/A'} cm',
+                  style: TextStyle(
+                    fontFamily: FitnessAppTheme.fontName,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    color: FitnessAppTheme.grey.withOpacity(0.8),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Weight: ${profileData['weight'] ?? 'N/A'} kg',
+                  style: TextStyle(
+                    fontFamily: FitnessAppTheme.fontName,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    color: FitnessAppTheme.grey.withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
