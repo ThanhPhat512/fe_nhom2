@@ -90,8 +90,9 @@ class _goodFoodScreenState extends State<goodFoodScreen>
         titleTxt: 'Danh Mục Sản Phẩm',
         animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
             parent: widget.animationController!,
-            curve: Interval((1 / count) * 2, 1.0, curve: Curves.fastOutSlowIn))),
-        animationController: widget.animationController!,
+            curve:
+                Interval((1 / count) * 2, 1.0, curve: Curves.fastOutSlowIn))),
+        animationController: widget.animationController!, onSubTxtTap: () {  },
       ),
     );
 
@@ -105,35 +106,58 @@ class _goodFoodScreenState extends State<goodFoodScreen>
       ),
     );
 
-    // Tải dữ liệu bài viết từ API
-    try {
-      List<Post> posts = await fetchPosts();
+    listViews.add(
+      TitleView(
+        titleTxt: 'Sản Phẩm',
+        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
+            parent: widget.animationController!,
+            curve:
+            Interval((1 / count) * 4, 1.0, curve: Curves.fastOutSlowIn))),
+        animationController: widget.animationController!, onSubTxtTap: () {  },
+      ),
+    );
 
-      // Thêm tiêu đề bài viết
-      listViews.add(
-        TitleView(
-          titleTxt: 'Bài viết',
-          animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-              parent: widget.animationController!,
-              curve: Interval((1 / count) * 9, 1.0, curve: Curves.fastOutSlowIn))),
-          animationController: widget.animationController!,
-        ),
-      );
+    listViews.add(
+      AreaListView(
+        mainScreenAnimation: Tween<double>(begin: 0.0, end: 1.0).animate(
+            CurvedAnimation(
+                parent: widget.animationController!,
+                curve: Interval((1 / count) * 5, 1.0,
+                    curve: Curves.fastOutSlowIn))),
+        mainScreenAnimationController: widget.animationController!,
+      ),
+    );
 
-      // Thêm danh sách bài viết
-      listViews.add(
-        PostView(
-          posts: posts,
-          animationController: widget.animationController!,
-          animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-              parent: widget.animationController!,
-              curve: Interval((1 / count) * 10, 1.0, curve: Curves.fastOutSlowIn))),
-        ),
-      );
-    } catch (e) {
-      debugPrint('Error fetching posts: $e');
-    }
+    listViews.add(
+      TitleView(
+        titleTxt: 'Thông tin của bạn',
+        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
+            parent: widget.animationController!,
+            curve:
+                Interval((1 / count) * 4, 1.0, curve: Curves.fastOutSlowIn))),
+        animationController: widget.animationController!, onSubTxtTap: () {  },
+      ),
+    );
 
+    listViews.add(
+      BodyMeasurementView(
+        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
+            parent: widget.animationController!,
+            curve:
+                Interval((1 / count) * 5, 1.0, curve: Curves.fastOutSlowIn))),
+        animationController: widget.animationController!,
+      ),
+    );
+    listViews.add(
+      TitleView(
+        titleTxt: 'Nước',
+        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
+            parent: widget.animationController!,
+            curve:
+                Interval((1 / count) * 6, 1.0, curve: Curves.fastOutSlowIn))),
+        animationController: widget.animationController!, onSubTxtTap: () {  },
+      ),
+    );
     // Gọi setState để cập nhật giao diện
     setState(() {});
   }

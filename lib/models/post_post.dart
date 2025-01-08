@@ -1,48 +1,59 @@
+
+import 'package:fe_nhom2/models/user_post.dart';
+
+import 'comment_post.dart';
+import 'like_post.dart';
+
 class Post {
   final int id;
-  final String title;
+  final bool status;
   final String description;
-  final String? image;
+  final String image;
   final DateTime dateCreate;
-  final PostUser user; // Renaming User to PostUser
+  final User user;
+  final List<Like> likes;
+  final List<Comment> comments;
 
   Post({
     required this.id,
-    required this.title,
+    required this.status,
     required this.description,
-    this.image,
+    required this.image,
     required this.dateCreate,
     required this.user,
+    required this.likes,
+    required this.comments,
   });
 
+  // Hàm chuyển đổi JSON thành đối tượng
   factory Post.fromJson(Map<String, dynamic> json) {
     return Post(
       id: json['id'],
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
+      status: json['status'],
+      description: json['description'],
       image: json['image'],
       dateCreate: DateTime.parse(json['dateCreate']),
-      user: PostUser.fromJson(json['user']), // Using PostUser here
+      user: User.fromJson(json['user']),
+      likes: (json['likes'] as List<dynamic>)
+          .map((like) => Like.fromJson(like))
+          .toList(),
+      comments: (json['comments'] as List<dynamic>)
+          .map((comment) => Comment.fromJson(comment))
+          .toList(),
     );
   }
-}
 
-class PostUser {
-  final String id;
-  final String userName;
-  final String? avatar;  // Avatar of the user
-
-  PostUser({
-    required this.id,
-    required this.userName,
-    this.avatar,  // Avatar URL of the user
-  });
-
-  factory PostUser.fromJson(Map<String, dynamic> json) {
-    return PostUser(
-      id: json['id'],
-      userName: json['userName'],
-      avatar: json['avatar'],  // Avatar URL
-    );
+  // Hàm chuyển đổi đối tượng thành JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'status': status,
+      'description': description,
+      'image': image,
+      'dateCreate': dateCreate.toIso8601String(),
+      'user': user.toJson(),
+      'likes': likes.map((like) => like.toJson()).toList(),
+      'comments': comments.map((comment) => comment.toJson()).toList(),
+    };
   }
 }

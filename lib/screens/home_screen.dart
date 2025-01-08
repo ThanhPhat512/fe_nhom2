@@ -109,7 +109,7 @@ class _homeScreenState extends State<homeScreen>
               animationController?.reverse().then<dynamic>((data) {
                 if (!mounted) { return;}
                 setState(() {
-                  tabBody = goodFoodScreen(animationController: animationController);
+                  tabBody = productScreen(animationController: animationController);
                 });
               });
             } else if (index == 3 ) {

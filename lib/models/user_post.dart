@@ -1,7 +1,7 @@
 import 'comment_post.dart';
 import 'like_post.dart';
 
-class user {
+class User {
   String? id;
   String? userName;
   String? normalizedUserName;
@@ -29,7 +29,7 @@ class user {
   List<Like>? likes;
   List<Comment>? comments;
 
-  user({
+  User({
     this.id,
     this.userName,
     this.normalizedUserName,
@@ -58,7 +58,7 @@ class user {
     this.comments,
   });
 
-  factory user.fromJson(Map<String, dynamic> json) => user(
+  factory User.fromJson(Map<String, dynamic> json) => User(
     id: json["id"],
     userName: json["userName"],
     normalizedUserName: json["normalizedUserName"],
