@@ -1,3 +1,4 @@
+import 'package:fe_nhom2/screens/seach/seach_product_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:fe_nhom2/theme/home_app_theme.dart';
 import 'package:fe_nhom2/models/tabIcon_data.dart';
@@ -86,7 +87,7 @@ class _homeScreenState extends State<homeScreen>
             Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (context) => productScreen(animationController: animationController)
+                  builder: (context) => seachProductScreen(animationController: animationController)
               ),
             );
           },
