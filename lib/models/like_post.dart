@@ -1,5 +1,4 @@
 import 'package:fe_nhom2/models/post_post.dart';
-
 class Like {
   int? id;
   int? postId;
@@ -18,11 +17,11 @@ class Like {
   });
 
   factory Like.fromJson(Map<String, dynamic> json) => Like(
-    id: json["id"],
-    postId: json["postId"],
-    userId: json["userId"],
+    id: json["id"] as int?,
+    postId: json["postId"] as int?,
+    userId: json["userId"] as String?,
     post: json["post"] != null ? Post.fromJson(json["post"]) : null,
-    user: json["user"],
+    user: json["user"] as String?,
     likedAt: json["likedAt"] != null
         ? DateTime.parse(json["likedAt"])
         : null,

@@ -2,284 +2,306 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../config/config_url.dart';
 import '../../../models/post_post.dart';
 import '../../../theme/home_app_theme.dart';
 
-import '../ui_view/PostView.dart';
-import '../ui_view/title_view.dart';
-import 'meals_list_view.dart';
-
-class goodFoodScreen extends StatefulWidget {
-  const goodFoodScreen({Key? key, this.animationController}) : super(key: key);
+class GoodFoodScreen extends StatefulWidget {
+  const GoodFoodScreen({Key? key, this.animationController}) : super(key: key);
 
   final AnimationController? animationController;
 
   @override
-  _goodFoodScreenState createState() => _goodFoodScreenState();
+  _GoodFoodScreenState createState() => _GoodFoodScreenState();
 }
 
-class _goodFoodScreenState extends State<goodFoodScreen>
-    with TickerProviderStateMixin {
-  Animation<double>? topBarAnimation;
-  List<Widget> listViews = <Widget>[];
-  final ScrollController scrollController = ScrollController();
-  double topBarOpacity = 0.0;
+Future<void> likePost(int postId, String token) async {
+  final String baseUrl = '${Config_URL.baseUrl}'; // Địa chỉ API của bạn
+  final String url = '$baseUrl/api/like/$postId/like';
+
+  try {
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token', // Gửi token JWT
+      },
+      body: json.encode({}),
+    );
+
+    if (response.statusCode == 200) {
+      print('Post liked successfully');
+    } else {
+      print('Failed to like post: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error: $e');
+  }
+}
+
+Future<void> unlikePost(int postId, String token) async {
+  final String baseUrl = '${Config_URL.baseUrl}'; // Địa chỉ API của bạn
+  final String url = '$baseUrl/api/like/$postId/unlike';
+
+  try {
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token', // Gửi token JWT
+      },
+      body: json.encode({}),
+    );
+
+    if (response.statusCode == 200) {
+      print('Post unliked successfully');
+    } else {
+      print('Failed to unlike post: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error: $e');
+  }
+}
+
+Future<List<Post>> fetchPosts() async {
+  final String baseUrl = '${Config_URL.baseUrl}/api/Post/active';
+  final response = await http.get(
+    Uri.parse(baseUrl),
+    headers: {
+      HttpHeaders.contentTypeHeader: 'application/json',
+      HttpHeaders.acceptHeader: 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+    },
+  );
+
+  if (response.statusCode == 200) {
+    List<dynamic> data = json.decode(response.body);
+
+    // Lặp qua tất cả bài viết và kiểm tra lại trạng thái like khi load dữ liệu
+    List<Post> posts = data.map((item) => Post.fromJson(item)).toList();
+
+    // Lấy token và userId khi tải dữ liệu để so sánh với trạng thái like
+    String currentUserId = await getUserIdFromToken();
+
+    for (var post in posts) {
+      // Kiểm tra nếu bài viết đã được like bởi user hiện tại
+      post.likes.any((like) {
+        return like['userId'] == currentUserId;
+      });
+    }
+
+    return posts;
+  } else {
+    throw Exception('Failed to load posts');
+  }
+}
+
+
+Future<String> getToken() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getString('jwt_token') ?? ''; // Lấy token JWT từ SharedPreferences
+}
+
+Future<String> getUserIdFromToken() async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('jwt_token');
+
+  if (token == null) {
+    return ''; // Nếu không có token, trả về chuỗi rỗng
+  }
+
+  // Giải mã token (Nếu sử dụng JWT, cần dùng thư viện giải mã JWT như 'jwt_decoder')
+  final decodedToken = JwtDecoder.decode(token);
+  final userId = decodedToken['userId']; // Lấy userId từ token
+
+  return userId;
+}
+
+class _GoodFoodScreenState extends State<GoodFoodScreen> with TickerProviderStateMixin {
+  String currentUserId = ''; // UserId của người dùng hiện tại
+  ScrollController _scrollController = ScrollController();  // Khai báo ScrollController
 
   @override
   void initState() {
     super.initState();
-    topBarAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: widget.animationController!,
-        curve: const Interval(0, 0.5, curve: Curves.fastOutSlowIn),
-      ),
-    );
+    getCurrentUserId();
+  }
 
-    scrollController.addListener(() {
-      if (scrollController.offset >= 24) {
-        if (topBarOpacity != 1.0) {
-          setState(() {
-            topBarOpacity = 1.0;
-          });
-        }
-      } else if (scrollController.offset <= 24 && scrollController.offset >= 0) {
-        if (topBarOpacity != scrollController.offset / 24) {
-          setState(() {
-            topBarOpacity = scrollController.offset / 24;
-          });
-        }
-      } else if (scrollController.offset <= 0) {
-        if (topBarOpacity != 0.0) {
-          setState(() {
-            topBarOpacity = 0.0;
-          });
-        }
-      }
+  Future<void> getCurrentUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      currentUserId = prefs.getString('user_id') ?? '';
     });
-
-    addAllListData();
   }
 
-  Future<List<Post>> fetchPosts() async {
-    final String baseUrl = '${Config_URL.baseUrl}api/Post';
-    final response = await http.get(
-      Uri.parse(baseUrl),
-      headers: {
-        HttpHeaders.contentTypeHeader: 'application/json',
-        HttpHeaders.acceptHeader: 'application/json',
-        'ngrok-skip-browser-warning': 'true',
-      },
-    );
+  Future<void> toggleLike(Post post) async {
+    String token = await getToken();
+    String currentUserId = await getUserIdFromToken();  // Lấy userId từ token
 
-    if (response.statusCode == 200) {
-      List<dynamic> data = json.decode(response.body);
-      return data.map((item) => Post.fromJson(item)).toList();
+    if (post.isLikedByUser(currentUserId)) {
+      await unlikePost(post.id, token);  // Nếu đã like, thực hiện unlike
     } else {
-      throw Exception('Failed to load posts');
+      await likePost(post.id, token);  // Nếu chưa like, thực hiện like
     }
+    setState(() {
+      post.likes.any((like) {
+        return like['userId'] == currentUserId;
+      }) ? post.likes.add({'userId': currentUserId}) : post.likes.removeWhere((like) => like['userId'] == currentUserId);
+    });
   }
 
-  Future<void> addAllListData() async {
-    const int count = 10;
-
-    // Thêm các view khác
-    listViews.add(
-      TitleView(
-        titleTxt: 'Danh Mục Sản Phẩm',
-        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-            parent: widget.animationController!,
-            curve:
-                Interval((1 / count) * 2, 1.0, curve: Curves.fastOutSlowIn))),
-        animationController: widget.animationController!, onSubTxtTap: () {  },
-      ),
-    );
-
-    listViews.add(
-      MealsListView(
-        mainScreenAnimation: Tween<double>(begin: 0.0, end: 1.0).animate(
-            CurvedAnimation(
-                parent: widget.animationController!,
-                curve: Interval((1 / count) * 3, 1.0, curve: Curves.fastOutSlowIn))),
-        mainScreenAnimationController: widget.animationController,
-      ),
-    );
-
-    listViews.add(
-      TitleView(
-        titleTxt: 'Sản Phẩm',
-        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-            parent: widget.animationController!,
-            curve:
-            Interval((1 / count) * 4, 1.0, curve: Curves.fastOutSlowIn))),
-        animationController: widget.animationController!, onSubTxtTap: () {  },
-      ),
-    );
-
-    listViews.add(
-      AreaListView(
-        mainScreenAnimation: Tween<double>(begin: 0.0, end: 1.0).animate(
-            CurvedAnimation(
-                parent: widget.animationController!,
-                curve: Interval((1 / count) * 5, 1.0,
-                    curve: Curves.fastOutSlowIn))),
-        mainScreenAnimationController: widget.animationController!,
-      ),
-    );
-
-    listViews.add(
-      TitleView(
-        titleTxt: 'Thông tin của bạn',
-        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-            parent: widget.animationController!,
-            curve:
-                Interval((1 / count) * 4, 1.0, curve: Curves.fastOutSlowIn))),
-        animationController: widget.animationController!, onSubTxtTap: () {  },
-      ),
-    );
-
-    listViews.add(
-      BodyMeasurementView(
-        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-            parent: widget.animationController!,
-            curve:
-                Interval((1 / count) * 5, 1.0, curve: Curves.fastOutSlowIn))),
-        animationController: widget.animationController!,
-      ),
-    );
-    listViews.add(
-      TitleView(
-        titleTxt: 'Nước',
-        animation: Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-            parent: widget.animationController!,
-            curve:
-                Interval((1 / count) * 6, 1.0, curve: Curves.fastOutSlowIn))),
-        animationController: widget.animationController!, onSubTxtTap: () {  },
-      ),
-    );
-    // Gọi setState để cập nhật giao diện
-    setState(() {});
-  }
-
-  Future<bool> getData() async {
-    await Future<dynamic>.delayed(const Duration(milliseconds: 50));
-    return true;
+  @override
+  void dispose() {
+    _scrollController.dispose();  // Giải phóng controller khi widget bị hủy
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: FitnessAppTheme.background,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Stack(
-          children: <Widget>[
-            getMainListViewUI(),
-            getAppBarUI(),
-            SizedBox(
-              height: MediaQuery.of(context).padding.bottom,
-            )
-          ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Posts'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.only(bottom: 80),  // Điều chỉnh giá trị này để tạo khoảng cách dưới
+        child: FutureBuilder<List<Post>>(
+          future: fetchPosts(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}'));
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const Center(child: Text('No posts available.'));
+            } else {
+              return ListView.builder(
+                controller: _scrollController,
+                itemCount: snapshot.data!.length,
+                itemBuilder: (context, index) {
+                  final post = snapshot.data![index];
+                  String formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(post.dateCreate);
+
+                  return Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                backgroundImage: post.user.avatar != null
+                                    ? NetworkImage(post.user.avatar!)
+                                    : const AssetImage('assets/default_profile.png') as ImageProvider,
+                                radius: 25,
+                              ),
+                              const SizedBox(width: 10),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    post.user.userName!,
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  ),
+                                  Text(
+                                    formattedDate,
+                                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            post.description ?? 'No description',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          const SizedBox(height: 16),
+                          post.image != null
+                              ? Padding(
+                            padding: const EdgeInsets.only(top: 16.0),
+                            child: Center( // Centering the image
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  post.image!,
+                                  fit: BoxFit.cover, // Ensure the image fills the available space
+                                  width: double.infinity, // Make image take the full width
+                                  height: 250, // Set a fixed height for better scaling
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress.expectedTotalBytes != null
+                                            ? loadingProgress.cumulativeBytesLoaded /
+                                            (loadingProgress.expectedTotalBytes ?? 1)
+                                            : null,
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) => const Center(
+                                    child: Text('Image failed to load'),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                              : const SizedBox.shrink(),
+                          const SizedBox(height: 8), // Giảm khoảng cách giữa ảnh và các nút cuối
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      post.isLikedByUser(currentUserId)
+                                          ? Icons.thumb_up
+                                          : Icons.thumb_up_alt_outlined,
+                                    ),
+                                    onPressed: () {
+                                      toggleLike(post);
+                                    },
+                                  ),
+                                  Text('${post.likeCount} Likes'),
+                                ],
+                              ),
+                              TextButton.icon(
+                                onPressed: () {
+                                  // Handle Comment action
+                                },
+                                icon: const Icon(Icons.comment_outlined),
+                                label: const Text('Comment'),
+                              ),
+                              TextButton.icon(
+                                onPressed: () {
+                                  // Handle Share action
+                                },
+                                icon: const Icon(Icons.share_outlined),
+                                label: const Text('Share'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            }
+          },
         ),
       ),
     );
   }
 
-  Widget getMainListViewUI() {
-    return FutureBuilder<bool>(
-      future: getData(),
-      builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-        if (!snapshot.hasData) {
-          return const SizedBox();
-        } else {
-          return ListView.builder(
-            controller: scrollController,
-            padding: EdgeInsets.only(
-              top: AppBar().preferredSize.height +
-                  MediaQuery.of(context).padding.top +
-                  24,
-              bottom: 62 + MediaQuery.of(context).padding.bottom,
-            ),
-            itemCount: listViews.length,
-            scrollDirection: Axis.vertical,
-            itemBuilder: (BuildContext context, int index) {
-              widget.animationController?.forward();
-              return listViews[index];
-            },
-          );
-        }
-      },
-    );
-  }
 
-  Widget getAppBarUI() {
-    return Column(
-      children: <Widget>[
-        AnimatedBuilder(
-          animation: widget.animationController!,
-          builder: (BuildContext context, Widget? child) {
-            return FadeTransition(
-              opacity: topBarAnimation!,
-              child: Transform(
-                transform: Matrix4.translationValues(
-                    0.0, 30 * (1.0 - topBarAnimation!.value), 0.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: FitnessAppTheme.white.withOpacity(topBarOpacity),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(32.0),
-                    ),
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(
-                        color: FitnessAppTheme.grey
-                            .withOpacity(0.4 * topBarOpacity),
-                        offset: const Offset(1.1, 1.1),
-                        blurRadius: 10.0,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: <Widget>[
-                      SizedBox(
-                        height: MediaQuery.of(context).padding.top,
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(
-                            left: 16,
-                            right: 16,
-                            top: 16 - 8.0 * topBarOpacity,
-                            bottom: 12 - 8.0 * topBarOpacity),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(
-                                  'GOOD FOOD',
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(
-                                    fontFamily: FitnessAppTheme.fontName,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 22 + 6 - 6 * topBarOpacity,
-                                    letterSpacing: 1.2,
-                                    color: FitnessAppTheme.nearlyBlue,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        )
-      ],
-    );
-  }
 }

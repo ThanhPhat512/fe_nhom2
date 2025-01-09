@@ -1,3 +1,4 @@
+import 'package:fe_nhom2/screens/seach/seach_product_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:fe_nhom2/theme/home_app_theme.dart';
 import 'package:fe_nhom2/models/tabIcon_data.dart';
@@ -34,7 +35,7 @@ class _homeScreenState extends State<homeScreen>
 
     animationController = AnimationController(
         duration: const Duration(milliseconds: 600), vsync: this);
-    tabBody = goodFoodScreen(animationController: animationController);
+    tabBody = GoodFoodScreen(animationController: animationController);
     super.initState();
   }
 
@@ -86,7 +87,7 @@ class _homeScreenState extends State<homeScreen>
             Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (context) => productScreen(animationController: animationController)
+                  builder: (context) => seachProductScreen(animationController: animationController)
               ),
             );
           },
@@ -96,13 +97,13 @@ class _homeScreenState extends State<homeScreen>
                 if (!mounted) {return; }
                 setState(() {
                 });
-                tabBody = goodFoodScreen(animationController: animationController);
+                tabBody = GoodFoodScreen(animationController: animationController);
               });
             } else if (index == 1 ) {
               animationController?.reverse().then<dynamic>((data) {
                 if (!mounted) { return;}
                 setState(() {
-                  tabBody = goodFoodScreen(animationController: animationController);
+                  tabBody = GoodFoodScreen(animationController: animationController);
                 });
               });
             } else if (index == 2 ) {
@@ -116,7 +117,7 @@ class _homeScreenState extends State<homeScreen>
               animationController?.reverse().then<dynamic>((data) {
                 if (!mounted) { return;}
                 setState(() {
-                  tabBody = userScreen(animationController: animationController);
+                  tabBody = UserScreen(animationController: animationController);
                 });
               });
             }
